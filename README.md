@@ -24,6 +24,14 @@ This system automatically fetches analytics data from MixPanel and sends formatt
 
 ---
 
+## Architecture Diagram
+
+
+
+[View Architecture Diagram on Excalidraw](https://excalidraw.com/#json=HEurPcOErrfYWYjWE500f,Eng5KocjQT_3D0-AT0OxqA)
+
+---
+
 ## System Architecture
 
 ```
@@ -399,13 +407,6 @@ Built by **Narendra Maurya** at Reewild Year-End Hackathon 2025
 
 ---
 
-## Architecture Diagram
-
-View the interactive system architecture diagram on Excalidraw:
-
-[View Architecture Diagram on Excalidraw](https://excalidraw.com/#json=HEurPcOErrfYWYjWE500f,Eng5KocjQT_3D0-AT0OxqA)
-
----
 
 ## License
 
