@@ -52,7 +52,9 @@ class SlackClient:
         top_events: List[Dict] = None,
         insights: List[str] = None,
         comparisons: Dict[str, Dict] = None,
-        mixpanel_url: str = None
+        mixpanel_url: str = None,
+        from_date: str = None,
+        to_date: str = None
     ) -> bool:
         """
         Send a formatted analytics report to Slack
@@ -64,10 +66,13 @@ class SlackClient:
             insights: List of insight strings
             comparisons: Dictionary of metric comparisons with previous period
             mixpanel_url: URL to MixPanel dashboard
+            from_date: Start date of the report period
+            to_date: End date of the report period
         """
         # Build the report blocks
         blocks = self._build_report_blocks(
-            period, metrics, top_events, insights, comparisons, mixpanel_url
+            period, metrics, top_events, insights, comparisons, mixpanel_url,
+            from_date, to_date
         )
         
         # Fallback text for notifications
@@ -108,12 +113,26 @@ class SlackClient:
         top_events: List[Dict] = None,
         insights: List[str] = None,
         comparisons: Dict[str, Dict] = None,
-        mixpanel_url: str = None
+        mixpanel_url: str = None,
+        from_date: str = None,
+        to_date: str = None
     ) -> List[Dict]:
         """Build Slack Block Kit blocks for the report"""
         
         comparisons = comparisons or {}
-        today = datetime.now().strftime("%B %d, %Y")
+        
+        # Format date range for display
+        date_range_str = ""
+        if from_date and to_date:
+            try:
+                from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+                to_dt = datetime.strptime(to_date, "%Y-%m-%d")
+                date_range_str = f"{from_dt.strftime('%b %d')} - {to_dt.strftime('%b %d, %Y')}"
+            except:
+                date_range_str = f"{from_date} to {to_date}"
+        else:
+            date_range_str = datetime.now().strftime("%B %d, %Y")
+        
         period_label = {
             "daily": "Daily",
             "weekly": "Weekly", 
@@ -131,13 +150,13 @@ class SlackClient:
                     "emoji": False
                 }
             },
-            # Date context
+            # Date range context
             {
                 "type": "context",
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f"{today} • {period_label} Summary"
+                        "text": f"*{date_range_str}* • {period_label} Summary"
                     }
                 ]
             },

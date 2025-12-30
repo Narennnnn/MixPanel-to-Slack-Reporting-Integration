@@ -95,7 +95,9 @@ class ReportGenerator:
             top_events=report.get("top_events", []),
             insights=report.get("insights", []),
             comparisons=report.get("comparisons", {}),
-            mixpanel_url=report.get("mixpanel_url", "")
+            mixpanel_url=report.get("mixpanel_url", ""),
+            from_date=report.get("from_date", ""),
+            to_date=report.get("to_date", "")
         )
     
     def _get_previous_period_dates(self, period: str) -> tuple:
