@@ -86,6 +86,7 @@ This system automatically fetches analytics data from MixPanel and sends formatt
 
 - **Scheduled Reports**: Daily, Weekly, and Bi-Weekly automated reports
 - **Custom Reports**: On-demand report generation via HTTP endpoint
+- **Slack Slash Commands**: Team members can request reports with `/analytics daily`
 - **Clean Slack Messages**: Professional Block Kit formatted messages (no excessive emojis)
 - **Serverless**: Runs on Azure Functions (cost-effective and scalable)
 - **Error Handling**: Automatic error notifications sent to Slack
@@ -113,6 +114,9 @@ ReewildInternalHackathon/
 ├── CustomReport/             # Azure Function - HTTP trigger
 │   ├── __init__.py
 │   └── function.json         # On-demand via API call
+├── SlackCommand/             # Azure Function - Slack slash command
+│   ├── __init__.py
+│   └── function.json         # Handles /analytics command
 ├── test_local.py             # Local testing script
 ├── requirements.txt          # Python dependencies
 ├── host.json                 # Azure Functions host config
@@ -271,6 +275,50 @@ curl "http://localhost:7071/api/CustomReport?from_date=2025-12-01&to_date=2025-1
 
 # Production URL (requires function key after deployment)
 curl "https://YOUR_APP_NAME.azurewebsites.net/api/customreport?code=YOUR_FUNCTION_KEY&period=weekly"
+```
+
+---
+
+## Slack Slash Commands
+
+Allow team members to request reports directly from Slack using `/analytics`.
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `/analytics` | Show help message |
+| `/analytics daily` | Get yesterday's report |
+| `/analytics weekly` | Get last 7 days report |
+| `/analytics biweekly` | Get last 14 days report |
+| `/analytics monthly` | Get last 30 days report |
+| `/analytics custom <days>` | Get report for last N days (1-90) |
+
+### Setting Up Slack Slash Commands
+
+1. Go to your [Slack App settings](https://api.slack.com/apps)
+2. Select your app (or create one)
+3. Navigate to **Slash Commands** in the sidebar
+4. Click **Create New Command**
+5. Configure the command:
+   - **Command**: `/analytics`
+   - **Request URL**: `https://YOUR_APP_NAME.azurewebsites.net/api/slack/command?code=YOUR_FUNCTION_KEY`
+   - **Short Description**: Get analytics reports
+   - **Usage Hint**: `[daily|weekly|biweekly|monthly|custom <days>]`
+6. Click **Save**
+7. Reinstall the app to your workspace if prompted
+
+### Example Usage in Slack
+
+```
+/analytics daily
+→ ✅ Daily report generated and sent to the channel!
+
+/analytics custom 7
+→ ✅ Last 7 days report generated and sent to the channel!
+
+/analytics help
+→ Shows available commands
 ```
 
 ---

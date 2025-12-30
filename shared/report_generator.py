@@ -42,6 +42,40 @@ class ReportGenerator:
     
     def __init__(self, mixpanel_client: Optional[MixPanelClient] = None):
         self.mixpanel = mixpanel_client or MixPanelClient()
+        self._slack_client = None
+    
+    @property
+    def slack_client(self):
+        """Lazy load Slack client"""
+        if self._slack_client is None:
+            from .slack_client import SlackClient
+            self._slack_client = SlackClient()
+        return self._slack_client
+    
+    def generate_daily_report(self) -> Dict[str, Any]:
+        """Generate a daily report (yesterday's data)"""
+        return self.generate_report(period="daily")
+    
+    def generate_weekly_report(self) -> Dict[str, Any]:
+        """Generate a weekly report (last 7 days)"""
+        return self.generate_report(period="weekly")
+    
+    def generate_biweekly_report(self) -> Dict[str, Any]:
+        """Generate a bi-weekly report (last 14 days)"""
+        return self.generate_report(period="biweekly")
+    
+    def generate_monthly_report(self) -> Dict[str, Any]:
+        """Generate a monthly report (last 30 days)"""
+        return self.generate_report(period="monthly")
+    
+    def send_to_slack(self, report: Dict[str, Any]) -> bool:
+        """Send a report to Slack"""
+        return self.slack_client.send_analytics_report(
+            period=report.get("period", "daily"),
+            metrics=report.get("metrics", {}),
+            top_events=report.get("top_events", []),
+            insights=report.get("insights", [])
+        )
     
     def generate_report(self, period: str = "daily") -> Dict[str, Any]:
         """
@@ -186,40 +220,53 @@ class ReportGenerator:
     
     def generate_custom_report(
         self,
-        events: List[str],
-        from_date: str,
-        to_date: str,
-        segment_by: Optional[str] = None
+        events: List[str] = None,
+        from_date: str = None,
+        to_date: str = None,
+        segment_by: Optional[str] = None,
+        days: int = None
     ) -> Dict[str, Any]:
         """
-        Generate a custom report for specific events
+        Generate a custom report for specific events or date range
         
         Args:
-            events: List of event names to analyze
+            events: List of event names to analyze (optional)
             from_date: Start date (YYYY-MM-DD)
             to_date: End date (YYYY-MM-DD)
             segment_by: Property to segment by (optional)
+            days: Number of days to look back (alternative to from_date/to_date)
         """
-        report = {
-            "type": "custom",
-            "from_date": from_date,
-            "to_date": to_date,
-            "events_analyzed": events,
-            "results": {},
-            "generated_at": datetime.now().isoformat()
-        }
+        # If days is provided, calculate date range
+        if days:
+            to_date = datetime.now().strftime("%Y-%m-%d")
+            from_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            return self.generate_report(period="custom")
         
-        for event in events:
-            try:
-                data = self.mixpanel.get_segmentation_data(
-                    event=event,
-                    from_date=from_date,
-                    to_date=to_date,
-                    segment_on=segment_by,
-                    type_="general"
-                )
-                report["results"][event] = data
-            except Exception as e:
-                report["results"][event] = {"error": str(e)}
+        # If events are provided, do detailed event analysis
+        if events:
+            report = {
+                "type": "custom",
+                "from_date": from_date,
+                "to_date": to_date,
+                "events_analyzed": events,
+                "results": {},
+                "generated_at": datetime.now().isoformat()
+            }
+            
+            for event in events:
+                try:
+                    data = self.mixpanel.get_segmentation_data(
+                        event=event,
+                        from_date=from_date,
+                        to_date=to_date,
+                        segment_on=segment_by,
+                        type_="general"
+                    )
+                    report["results"][event] = data
+                except Exception as e:
+                    report["results"][event] = {"error": str(e)}
+            
+            return report
         
-        return report
+        # Default: generate standard report for date range
+        return self.generate_report(period="custom")
