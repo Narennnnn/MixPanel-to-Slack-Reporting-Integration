@@ -1,4 +1,4 @@
-# Reewild Analytics Reporter
+# RW Analytics Reporter
 
 > **RW: Hackathon 2025** - MixPanel to Slack Reporting Integration
 
