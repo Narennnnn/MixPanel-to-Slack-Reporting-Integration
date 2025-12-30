@@ -1,4 +1,9 @@
-# RW: Hackathon 2025: MixPanel to Slack Analytics Reporter
+# RW: Hackathon 2025
+
+
+## MixPanel to Slack Analytics Reporter
+
+
 
 Automated analytics reporting system that fetches insights from MixPanel and sends formatted reports to Slack. Built with Azure Functions for serverless, scheduled reporting.
 
