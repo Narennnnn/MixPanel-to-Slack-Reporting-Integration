@@ -1,8 +1,6 @@
-# RW Analytics Reporter
+# MixPanel to Slack Analytics Reporter
 
-> **RW: Hackathon 2025** - MixPanel to Slack Reporting Integration
-
-Automated analytics reporting system that fetches insights from MixPanel and sends beautiful reports to Slack.
+Automated analytics reporting system that fetches insights from MixPanel and sends formatted reports to Slack. Built with Azure Functions for serverless, scheduled reporting.
 
 ---
 
@@ -83,7 +81,7 @@ This system automatically fetches analytics data from MixPanel and sends formatt
 
 - **Scheduled Reports**: Daily, Weekly, and Bi-Weekly automated reports
 - **Custom Reports**: On-demand report generation via HTTP endpoint
-- **Rich Slack Messages**: Beautiful Block Kit formatted messages
+- **Clean Slack Messages**: Professional Block Kit formatted messages (no excessive emojis)
 - **Serverless**: Runs on Azure Functions (cost-effective and scalable)
 - **Error Handling**: Automatic error notifications sent to Slack
 
@@ -154,14 +152,14 @@ MIXPANEL_SECRET=your_service_account_secret
 MIXPANEL_PROJECT_ID=your_project_id
 
 # MixPanel Data Residency (eu, us, or in)
-MIXPANEL_REGION=eu
+MIXPANEL_REGION=us
 
 # Slack Configuration
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 # Optional Settings
-COMPANY_NAME=Reewild
-TIMEZONE=Europe/London
+COMPANY_NAME=YourCompany
+TIMEZONE=UTC
 ```
 
 ### 3. Test Locally
@@ -212,7 +210,7 @@ func start
 
 1. Go to [Create Slack App](https://api.slack.com/apps?new_app=1)
 2. Click "Create New App" then "From scratch"
-3. Name the app "Reewild Analytics Bot"
+3. Name the app "Analytics Reporter" (or any name you prefer)
 4. Select your workspace
 5. Navigate to "Incoming Webhooks" in the sidebar
 6. Toggle "Activate Incoming Webhooks" to ON
@@ -266,8 +264,8 @@ curl "http://localhost:7071/api/CustomReport?period=daily&send_slack=false"
 # Custom date range
 curl "http://localhost:7071/api/CustomReport?from_date=2025-12-01&to_date=2025-12-28"
 
-# Production URL (after deployment)
-curl "https://your-function.azurewebsites.net/api/CustomReport?period=weekly"
+# Production URL (requires function key after deployment)
+curl "https://YOUR_APP_NAME.azurewebsites.net/api/customreport?code=YOUR_FUNCTION_KEY&period=weekly"
 ```
 
 ---
@@ -284,51 +282,62 @@ brew install azure-cli
 az login
 ```
 
-### 2. Create Azure Resources
+### 2. Create Resources
 
 ```bash
-# Create resource group
-az group create --name reewild-analytics-rg --location eastus
+# Create a resource group (or use an existing one)
+az group create --name my-analytics-rg --location eastus
 
-# Create storage account (required for Azure Functions)
+# Create a storage account (required for Azure Functions)
 az storage account create \
-    --name reewildanalyticsstorage \
+    --name myanalyticsstorage \
+    --resource-group my-analytics-rg \
     --location eastus \
-    --resource-group reewild-analytics-rg \
     --sku Standard_LRS
+```
 
-# Create function app
+### 3. Create Function App
+
+```bash
 az functionapp create \
-    --resource-group reewild-analytics-rg \
+    --resource-group my-analytics-rg \
     --consumption-plan-location eastus \
     --runtime python \
-    --runtime-version 3.9 \
+    --runtime-version 3.10 \
     --functions-version 4 \
-    --name reewild-analytics-reporter \
-    --storage-account reewildanalyticsstorage \
+    --name my-analytics-reporter \
+    --storage-account myanalyticsstorage \
     --os-type linux
 ```
 
-### 3. Configure App Settings (Environment Variables)
+### 4. Configure App Settings (Environment Variables)
 
 ```bash
 az functionapp config appsettings set \
-    --name reewild-analytics-reporter \
-    --resource-group reewild-analytics-rg \
+    --name my-analytics-reporter \
+    --resource-group my-analytics-rg \
     --settings \
     MIXPANEL_USERNAME="your_username" \
     MIXPANEL_SECRET="your_secret" \
     MIXPANEL_PROJECT_ID="your_project_id" \
-    MIXPANEL_REGION="eu" \
+    MIXPANEL_REGION="us" \
     SLACK_WEBHOOK_URL="your_webhook_url" \
-    COMPANY_NAME="Reewild"
+    COMPANY_NAME="YourCompany"
 ```
 
-### 4. Deploy the Function App
+### 5. Deploy the Function App
 
 ```bash
-func azure functionapp publish reewild-analytics-reporter
+func azure functionapp publish my-analytics-reporter
 ```
+
+### 6. Get Function Key (for HTTP endpoint)
+
+```bash
+az functionapp keys list --name my-analytics-reporter --resource-group my-analytics-rg --query functionKeys.default -o tsv
+```
+
+Use this key in the `code` query parameter when calling the HTTP endpoint.
 
 ---
 
@@ -336,42 +345,34 @@ func azure functionapp publish reewild-analytics-reporter
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  📊 Reewild Weekly Analytics Report                      │
+│  Weekly Report                                           │
 ├──────────────────────────────────────────────────────────┤
-│  December 30, 2025 | Weekly Summary                      │
+│  December 30, 2025 • Weekly Summary                      │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│  📈 KEY METRICS                                          │
-│  ──────────────────────────────────────────────────────  │
-│  👥 Weekly Active Users     25                           │
-│  🆕 New Signups             141                          │
-│  ✅ Users Onboarded         26                           │
-│  🧾 Receipts Uploaded       172                          │
-│  🌍 PlanetPoints Added      94                           │
-│  🎁 Vouchers Redeemed       9                            │
+│  Key Metrics                                             │
+│  • Weekly Active Users: 250                              │
+│  • New Signups: 48                                       │
+│  • Users Onboarded: 35                                   │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│  🔥 TOP EVENTS                                           │
-│  ──────────────────────────────────────────────────────  │
-│  1. Email Sent - 8,444 times                             │
-│  2. Email Skipped - 6,088 times                          │
-│  3. PlanetPoints Product Tracked - 2,628 times           │
-│  4. Notifications Disabled - 1,767 times                 │
-│  5. Receipt Uploaded - 805 times                         │
+│  Top Events                                              │
+│  1. Page View — 12,500                                   │
+│  2. Button Click — 3,200                                 │
+│  3. Sign Up — 48                                         │
+│  4. Purchase — 120                                       │
+│  5. Feature Used — 890                                   │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
-│  💡 INSIGHTS                                             │
-│  ──────────────────────────────────────────────────────  │
-│  • Most popular action: Email Sent with 8,444 uses       │
-│  • 141 new users joined this week!                       │
-│  • 172 receipts scanned for rewards                      │
-│  • 9 vouchers redeemed by users                          │
+│  Summary                                                 │
+│  • Top action: Page View (12,500 occurrences)            │
+│  • Weekly Active Users: 250                              │
+│  • New signups: 48                                       │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
-│  Powered by Reewild Analytics Bot                        │
-│  Built at RW: Hackathon 2025                             │
+│  Analytics • Auto-generated report                       │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -385,23 +386,13 @@ Edit `shared/report_generator.py`:
 
 ```python
 DEFAULT_EVENTS = [
-    "PlanetPoints Added",
-    "Receipt Uploaded",
-    "PlanetPoints Profile Enrolled",
     "Sign Up",
     "User Onboarded",
-    "PlanetPoints Product Tracked",
+    "Page View",
+    "Button Click",
+    "Purchase",
+    "Feature Used",
     "$ae_session",
-    "Voucher Redeemed",
-    "Receipt Failed",
-    "PlanetPoints Sign Up",
-    "Item Tracked",
-    "Receipt Validation Failed",
-    "Receipt Autheticity Tracked",
-    "SpinWheel Spun",
-    "Product Viewed",
-    "Referral Completed",
-    "Receipt Anomaly Detected",
     "your_custom_event",  # Add your events here
 ]
 ```
@@ -452,20 +443,18 @@ Edit `shared/slack_client.py` and modify the `_build_report_blocks()` method.
 
 ## Metrics Tracked
 
+Customize the events tracked by editing `shared/report_generator.py`. Common metrics include:
+
 | Metric | MixPanel Event |
 |--------|----------------|
 | New Signups | `Sign Up` |
 | Users Onboarded | `User Onboarded` |
-| Receipts Uploaded | `Receipt Uploaded` |
-| PlanetPoints Added | `PlanetPoints Added` |
-| Vouchers Redeemed | `Voucher Redeemed` |
-| Products Tracked | `PlanetPoints Product Tracked` |
-| Referrals Completed | `Referral Completed` |
+| Active Sessions | `$ae_session` |
+| Page Views | `Page View` |
+| Purchases | `Purchase` |
 
 ---
 
-## Author
+## License
 
-Built by **Narendra Maurya** at RW: Hackathon 2025
-
----
+MIT License - feel free to use and modify for your own projects.
