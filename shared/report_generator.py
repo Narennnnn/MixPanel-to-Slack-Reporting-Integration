@@ -9,19 +9,37 @@ from .mixpanel_client import MixPanelClient, get_date_range
 class ReportGenerator:
     """Generates analytics reports from MixPanel data"""
     
-    # Common events to track for Reewild (customize based on your app)
+    # Reewild actual events from MixPanel dashboard
     DEFAULT_EVENTS = [
-        "app_opened",
-        "user_signed_up",
-        "user_logged_in",
-        "product_scanned",
-        "recipe_viewed",
-        "carbon_calculated",
-        "reward_claimed",
-        "profile_updated",
-        "search_performed",
-        "item_added_to_list"
+        "PlanetPoints Added",
+        "Receipt Uploaded",
+        "PlanetPoints Profile Enrolled",
+        "Sign Up",
+        "User Onboarded",
+        "PlanetPoints Product Tracked",
+        "$ae_session",
+        "Voucher Redeemed",
+        "Receipt Failed",
+        "PlanetPoints Sign Up",
+        "Item Tracked",
+        "Receipt Validation Failed",
+        "Receipt Autheticity Tracked",
+        "SpinWheel Spun",
+        "Product Viewed",
+        "Referral Completed",
+        "Receipt Anomaly Detected"
     ]
+    
+    # Key metrics events for summary
+    KEY_METRIC_EVENTS = {
+        "New Signups": "Sign Up",
+        "Users Onboarded": "User Onboarded",
+        "Receipts Uploaded": "Receipt Uploaded",
+        "PlanetPoints Added": "PlanetPoints Added",
+        "Vouchers Redeemed": "Voucher Redeemed",
+        "Products Tracked": "PlanetPoints Product Tracked",
+        "Referrals Completed": "Referral Completed"
+    }
     
     def __init__(self, mixpanel_client: Optional[MixPanelClient] = None):
         self.mixpanel = mixpanel_client or MixPanelClient()
@@ -85,8 +103,8 @@ class ReportGenerator:
                 "monthly": "Monthly Active Users"
             }.get(period, "Active Users")
             
-            # Try with common session/app open events
-            for event in ["app_opened", "session_start", "$mp_web_page_view"]:
+            # Try with Reewild session event
+            for event in ["$ae_session", "Sign Up", "User Onboarded"]:
                 try:
                     data = self.mixpanel.get_unique_users(event, from_date, to_date)
                     if data and "data" in data and "values" in data["data"]:
@@ -102,8 +120,8 @@ class ReportGenerator:
         except Exception as e:
             print(f"Error calculating user metrics: {e}")
         
-        # Try to get event counts for key events
-        for event_name in ["user_signed_up", "product_scanned", "reward_claimed"]:
+        # Get counts for Reewild key metric events
+        for display_name, event_name in self.KEY_METRIC_EVENTS.items():
             try:
                 data = self.mixpanel.get_segmentation_data(
                     event=event_name,
@@ -117,7 +135,6 @@ class ReportGenerator:
                         for day_values in data["data"]["values"].values()
                     )
                     if total > 0:
-                        display_name = event_name.replace("_", " ").title()
                         metrics[display_name] = total
             except Exception as e:
                 print(f"Error getting {event_name}: {e}")
@@ -138,25 +155,34 @@ class ReportGenerator:
         
         # User activity insight
         metrics = report["metrics"]
-        for key in ["Daily Active Users", "Weekly Active Users", "Monthly Active Users"]:
+        for key in ["Daily Active Users", "Weekly Active Users", "Monthly Active Users", "Bi-Weekly Active Users"]:
             if key in metrics:
                 insights.append(f"Total {key}: *{metrics[key]:,}* users")
                 break
         
+        # Reewild specific insights
+        if "New Signups" in metrics:
+            insights.append(f"New user signups: *{metrics['New Signups']:,}* users joined!")
+        
+        if "Receipts Uploaded" in metrics:
+            insights.append(f"Receipts scanned: *{metrics['Receipts Uploaded']:,}* receipts uploaded")
+        
+        if "Vouchers Redeemed" in metrics:
+            insights.append(f"Rewards claimed: *{metrics['Vouchers Redeemed']:,}* vouchers redeemed")
+        
+        if "Referrals Completed" in metrics:
+            insights.append(f"Referral program: *{metrics['Referrals Completed']:,}* successful referrals")
+        
         # Period-specific insights
         period = report["period"]
         if period == "weekly":
-            insights.append("📈 Review weekly trends to optimize user engagement")
+            insights.append("Review weekly trends to optimize user engagement")
         elif period == "biweekly":
-            insights.append("📊 Bi-weekly checkpoint - great for sprint reviews!")
-        
-        # If we have sign-ups
-        if "User Signed Up" in metrics:
-            insights.append(f"🎉 {metrics['User Signed Up']:,} new users joined!")
+            insights.append("Bi-weekly checkpoint - great for sprint reviews!")
         
         # Default insight if nothing else
         if not insights:
-            insights.append("📊 Analytics data collected successfully")
+            insights.append("Analytics data collected successfully")
         
         return insights
     

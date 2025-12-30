@@ -15,10 +15,18 @@ class MixPanelClient:
         self.username = os.environ.get("MIXPANEL_USERNAME")
         self.secret = os.environ.get("MIXPANEL_SECRET")
         self.project_id = os.environ.get("MIXPANEL_PROJECT_ID")
+        region = os.environ.get("MIXPANEL_REGION", "us")  # Default to US, use 'eu' for EU residency
         
-        # API Base URLs
-        self.query_base_url = "https://mixpanel.com/api/query"
-        self.export_base_url = "https://data.mixpanel.com/api/2.0"
+        # API Base URLs based on data residency
+        if region.lower() == "eu":
+            self.query_base_url = "https://eu.mixpanel.com/api/query"
+            self.export_base_url = "https://data-eu.mixpanel.com/api/2.0"
+        elif region.lower() == "in":
+            self.query_base_url = "https://in.mixpanel.com/api/query"
+            self.export_base_url = "https://data-in.mixpanel.com/api/2.0"
+        else:
+            self.query_base_url = "https://mixpanel.com/api/query"
+            self.export_base_url = "https://data.mixpanel.com/api/2.0"
         
         if not self.username or not self.secret:
             raise ValueError("MixPanel credentials not configured. Set MIXPANEL_USERNAME and MIXPANEL_SECRET")
