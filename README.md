@@ -1,6 +1,6 @@
 # Reewild Analytics Reporter
 
-> **Year-End Hackathon 2025** - MixPanel to Slack Reporting Integration
+> **RW: Hackathon 2025** - MixPanel to Slack Reporting Integration
 
 Automated analytics reporting system that fetches insights from MixPanel and sends beautiful reports to Slack.
 
@@ -70,12 +70,12 @@ This system automatically fetches analytics data from MixPanel and sends formatt
 
 ## Key Components
 
-| Component | Purpose |
-|-----------|---------|
-| Azure Functions | Runs code on schedule without managing servers |
-| MixPanel Client | Authenticates and fetches data from MixPanel |
-| Report Generator | Processes data and creates insights |
-| Slack Client | Formats and sends messages to Slack |
+| Component | File | Purpose |
+|-----------|------|---------|
+| Azure Functions | `*Report/__init__.py` | Runs code on schedule without managing servers |
+| MixPanel Client | `shared/mixpanel_client.py` | Authenticates and fetches data from MixPanel (EU/US/IN) |
+| Report Generator | `shared/report_generator.py` | Processes data and creates insights |
+| Slack Client | `shared/slack_client.py` | Formats and sends Block Kit messages to Slack |
 
 ---
 
@@ -153,12 +153,15 @@ MIXPANEL_USERNAME=your_service_account_username
 MIXPANEL_SECRET=your_service_account_secret
 MIXPANEL_PROJECT_ID=your_project_id
 
+# MixPanel Data Residency (eu, us, or in)
+MIXPANEL_REGION=eu
+
 # Slack Configuration
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 # Optional Settings
 COMPANY_NAME=Reewild
-TIMEZONE=Asia/Kolkata
+TIMEZONE=Europe/London
 ```
 
 ### 3. Test Locally
@@ -170,6 +173,27 @@ python test_local.py
 ### 4. Run Azure Functions Locally
 
 ```bash
+# Set PYTHONPATH for dependencies (required on macOS with Homebrew Python)
+export PYTHONPATH="/Users/$(whoami)/Library/Python/3.12/lib/python/site-packages:$PYTHONPATH"
+
+# Start the function app
+func start
+```
+
+**Note**: Timer triggers require Azure Storage. To test locally without storage, use the HTTP endpoint or `test_local.py`.
+
+---
+
+## Running Locally (macOS Setup)
+
+If you're on macOS with Homebrew Python, you may need to install packages globally:
+
+```bash
+# Install packages for Azure Functions worker
+pip3.12 install --break-system-packages --user requests python-dotenv
+
+# Or set PYTHONPATH before running
+export PYTHONPATH="/Users/$(whoami)/Library/Python/3.12/lib/python/site-packages:$PYTHONPATH"
 func start
 ```
 
@@ -230,17 +254,20 @@ GET/POST /api/CustomReport
 ### Examples
 
 ```bash
-# Get weekly report and send to Slack
-curl "https://your-function.azurewebsites.net/api/CustomReport?period=weekly"
+# Get daily report and send to Slack
+curl "http://localhost:7071/api/CustomReport?period=daily"
+
+# Get weekly report
+curl "http://localhost:7071/api/CustomReport?period=weekly"
 
 # Get report without sending to Slack (JSON response only)
-curl "https://your-function.azurewebsites.net/api/CustomReport?period=daily&send_slack=false"
+curl "http://localhost:7071/api/CustomReport?period=daily&send_slack=false"
 
 # Custom date range
-curl "https://your-function.azurewebsites.net/api/CustomReport?from_date=2025-12-01&to_date=2025-12-28"
+curl "http://localhost:7071/api/CustomReport?from_date=2025-12-01&to_date=2025-12-28"
 
-# Analyze specific events only
-curl "https://your-function.azurewebsites.net/api/CustomReport?events=user_signed_up,product_scanned"
+# Production URL (after deployment)
+curl "https://your-function.azurewebsites.net/api/CustomReport?period=weekly"
 ```
 
 ---
@@ -292,6 +319,7 @@ az functionapp config appsettings set \
     MIXPANEL_USERNAME="your_username" \
     MIXPANEL_SECRET="your_secret" \
     MIXPANEL_PROJECT_ID="your_project_id" \
+    MIXPANEL_REGION="eu" \
     SLACK_WEBHOOK_URL="your_webhook_url" \
     COMPANY_NAME="Reewild"
 ```
@@ -307,38 +335,44 @@ func azure functionapp publish reewild-analytics-reporter
 ## Sample Slack Report
 
 ```
-+----------------------------------------------------------+
-|  Reewild Weekly Analytics Report                         |
-+----------------------------------------------------------+
-|  December 29, 2025 | Weekly Summary                      |
-+----------------------------------------------------------+
-|                                                          |
-|  KEY METRICS                                             |
-|  * Weekly Active Users: 1,234                            |
-|  * New Signups: 89                                       |
-|  * Products Scanned: 3,456                               |
-|  * Rewards Claimed: 234                                  |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  TOP EVENTS                                              |
-|  1. app_opened - 5,678 times                             |
-|  2. product_scanned - 3,456 times                        |
-|  3. recipe_viewed - 2,345 times                          |
-|  4. carbon_calculated - 1,234 times                      |
-|  5. reward_claimed - 234 times                           |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  INSIGHTS                                                |
-|  * Most popular action: app_opened with 5,678 uses       |
-|  * 89 new users joined this week                         |
-|  * Review weekly trends to optimize engagement           |
-|                                                          |
-+----------------------------------------------------------+
-|  Powered by Reewild Analytics Bot                        |
-|  Built at Year-End Hackathon 2025                        |
-+----------------------------------------------------------+
+┌──────────────────────────────────────────────────────────┐
+│  📊 Reewild Weekly Analytics Report                      │
+├──────────────────────────────────────────────────────────┤
+│  December 30, 2025 | Weekly Summary                      │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  📈 KEY METRICS                                          │
+│  ──────────────────────────────────────────────────────  │
+│  👥 Weekly Active Users     25                           │
+│  🆕 New Signups             141                          │
+│  ✅ Users Onboarded         26                           │
+│  🧾 Receipts Uploaded       172                          │
+│  🌍 PlanetPoints Added      94                           │
+│  🎁 Vouchers Redeemed       9                            │
+│                                                          │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  🔥 TOP EVENTS                                           │
+│  ──────────────────────────────────────────────────────  │
+│  1. Email Sent - 8,444 times                             │
+│  2. Email Skipped - 6,088 times                          │
+│  3. PlanetPoints Product Tracked - 2,628 times           │
+│  4. Notifications Disabled - 1,767 times                 │
+│  5. Receipt Uploaded - 805 times                         │
+│                                                          │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  💡 INSIGHTS                                             │
+│  ──────────────────────────────────────────────────────  │
+│  • Most popular action: Email Sent with 8,444 uses       │
+│  • 141 new users joined this week!                       │
+│  • 172 receipts scanned for rewards                      │
+│  • 9 vouchers redeemed by users                          │
+│                                                          │
+├──────────────────────────────────────────────────────────┤
+│  Powered by Reewild Analytics Bot                        │
+│  Built at RW: Hackathon 2025                             │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -351,12 +385,23 @@ Edit `shared/report_generator.py`:
 
 ```python
 DEFAULT_EVENTS = [
-    "app_opened",
-    "user_signed_up",
-    "product_scanned",
-    "recipe_viewed",
-    "carbon_calculated",
-    "reward_claimed",
+    "PlanetPoints Added",
+    "Receipt Uploaded",
+    "PlanetPoints Profile Enrolled",
+    "Sign Up",
+    "User Onboarded",
+    "PlanetPoints Product Tracked",
+    "$ae_session",
+    "Voucher Redeemed",
+    "Receipt Failed",
+    "PlanetPoints Sign Up",
+    "Item Tracked",
+    "Receipt Validation Failed",
+    "Receipt Autheticity Tracked",
+    "SpinWheel Spun",
+    "Product Viewed",
+    "Referral Completed",
+    "Receipt Anomaly Detected",
     "your_custom_event",  # Add your events here
 ]
 ```
@@ -384,30 +429,43 @@ Edit `shared/slack_client.py` and modify the `_build_report_blocks()` method.
 
 | Issue | Solution |
 |-------|----------|
+| `ModuleNotFoundError: No module named 'requests'` | Set PYTHONPATH before running: `export PYTHONPATH="/Users/$(whoami)/Library/Python/3.12/lib/python/site-packages:$PYTHONPATH"` |
 | MixPanel API returns empty data | Verify Project ID is correct and has data for the date range |
+| MixPanel returns 401 Unauthorized | Check service account credentials are correct |
+| MixPanel returns 400 Bad Request | Ensure you're using Project ID (numeric), not Project Token |
 | Slack message not sending | Check webhook URL is valid and channel exists |
-| Authentication errors | Verify service account credentials are correct |
+| Timer triggers fail locally | Timer triggers require Azure Storage. Use `test_local.py` or HTTP endpoint instead |
 | Azure Function not triggering | Check timer expression and function app logs |
+| Rate limit errors (429) | MixPanel has rate limits; the code handles this gracefully |
 
 ---
 
 ## Tech Stack
 
-- **Runtime**: Python 3.9
+- **Runtime**: Python 3.9+
 - **Hosting**: Azure Functions (Serverless)
-- **APIs**: MixPanel Query API, MixPanel Export API
+- **APIs**: MixPanel Query API (EU/US/IN data residency supported)
 - **Messaging**: Slack Incoming Webhooks
 - **Message Format**: Slack Block Kit
 
 ---
 
-## Author
+## Metrics Tracked
 
-Built by **Narendra Maurya** at Reewild Year-End Hackathon 2025
+| Metric | MixPanel Event |
+|--------|----------------|
+| New Signups | `Sign Up` |
+| Users Onboarded | `User Onboarded` |
+| Receipts Uploaded | `Receipt Uploaded` |
+| PlanetPoints Added | `PlanetPoints Added` |
+| Vouchers Redeemed | `Voucher Redeemed` |
+| Products Tracked | `PlanetPoints Product Tracked` |
+| Referrals Completed | `Referral Completed` |
 
 ---
 
+## Author
 
-## License
+Built by **Narendra Maurya** at RW: Hackathon 2025
 
-Internal use only - Reewild
+---

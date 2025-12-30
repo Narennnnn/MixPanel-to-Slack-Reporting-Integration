@@ -170,7 +170,7 @@ class SlackClient:
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f"🤖 Powered by {self.company_name} Analytics Bot | Built at Year-End Hackathon 2025 🎉"
+                        "text": f" Powered by {self.company_name} Analytics Bot | Built at RW: Hackathon 2025 🎉"
                     }
                 ]
             }
