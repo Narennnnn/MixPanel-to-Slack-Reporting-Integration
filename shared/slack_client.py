@@ -65,7 +65,7 @@ class SlackClient:
         blocks = self._build_report_blocks(period, metrics, top_events, insights)
         
         # Fallback text for notifications
-        fallback_text = f"📊 {self.company_name} {period.capitalize()} Analytics Report"
+        fallback_text = f"{self.company_name} {period.capitalize()} Analytics Report"
         
         return self.send_message(fallback_text, blocks)
     
@@ -92,8 +92,8 @@ class SlackClient:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"📊 {self.company_name} {period_label} Analytics Report",
-                    "emoji": True
+                    "text": f"{self.company_name} {period_label} Report",
+                    "emoji": False
                 }
             },
             # Date context
@@ -102,7 +102,7 @@ class SlackClient:
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f"📅 *{today}* | {period_label} Summary"
+                        "text": f"{today} • {period_label} Summary"
                     }
                 ]
             },
@@ -111,15 +111,15 @@ class SlackClient:
         
         # Key Metrics Section
         if metrics:
-            metrics_text = "*📈 Key Metrics*\n"
+            metrics_text = "*Key Metrics*\n"
             for metric_name, value in metrics.items():
                 if isinstance(value, dict) and "value" in value:
                     display_value = value["value"]
                     change = value.get("change", "")
                     change_str = f" ({change})" if change else ""
-                    metrics_text += f"• *{metric_name}:* {display_value:,}{change_str}\n"
+                    metrics_text += f"• {metric_name}: *{display_value:,}*{change_str}\n"
                 else:
-                    metrics_text += f"• *{metric_name}:* {value:,}\n"
+                    metrics_text += f"• {metric_name}: *{value:,}*\n"
             
             blocks.append({
                 "type": "section",
@@ -133,10 +133,9 @@ class SlackClient:
         if top_events:
             blocks.append({"type": "divider"})
             
-            events_text = "*🔥 Top Events*\n"
+            events_text = "*Top Events*\n"
             for i, event in enumerate(top_events[:5], 1):
-                medal = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][i-1]
-                events_text += f"{medal} `{event['event']}` - {event['count']:,} times\n"
+                events_text += f"{i}. {event['event']} — {event['count']:,}\n"
             
             blocks.append({
                 "type": "section",
@@ -150,7 +149,7 @@ class SlackClient:
         if insights:
             blocks.append({"type": "divider"})
             
-            insights_text = "*💡 Insights*\n"
+            insights_text = "*Summary*\n"
             for insight in insights:
                 insights_text += f"• {insight}\n"
             
@@ -170,7 +169,7 @@ class SlackClient:
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f" Powered by {self.company_name} Analytics Bot | Built at RW: Hackathon 2025 🎉"
+                        "text": f"{self.company_name} Analytics • Auto-generated report"
                     }
                 ]
             }

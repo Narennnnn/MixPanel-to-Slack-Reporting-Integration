@@ -30,7 +30,6 @@ class ReportGenerator:
         "Receipt Anomaly Detected"
     ]
     
-    # Key metrics events for summary
     KEY_METRIC_EVENTS = {
         "New Signups": "Sign Up",
         "Users Onboarded": "User Onboarded",
@@ -149,36 +148,35 @@ class ReportGenerator:
         if report["top_events"]:
             top_event = report["top_events"][0]
             insights.append(
-                f"Most popular action: *{top_event['event']}* "
-                f"with {top_event['count']:,} occurrences"
+                f"Top action: {top_event['event']} ({top_event['count']:,} occurrences)"
             )
         
         # User activity insight
         metrics = report["metrics"]
         for key in ["Daily Active Users", "Weekly Active Users", "Monthly Active Users", "Bi-Weekly Active Users"]:
             if key in metrics:
-                insights.append(f"Total {key}: *{metrics[key]:,}* users")
+                insights.append(f"{key}: {metrics[key]:,}")
                 break
         
         # Reewild specific insights
         if "New Signups" in metrics:
-            insights.append(f"New user signups: *{metrics['New Signups']:,}* users joined!")
+            insights.append(f"New signups: {metrics['New Signups']:,}")
         
         if "Receipts Uploaded" in metrics:
-            insights.append(f"Receipts scanned: *{metrics['Receipts Uploaded']:,}* receipts uploaded")
+            insights.append(f"Receipts uploaded: {metrics['Receipts Uploaded']:,}")
         
         if "Vouchers Redeemed" in metrics:
-            insights.append(f"Rewards claimed: *{metrics['Vouchers Redeemed']:,}* vouchers redeemed")
+            insights.append(f"Vouchers redeemed: {metrics['Vouchers Redeemed']:,}")
         
         if "Referrals Completed" in metrics:
-            insights.append(f"Referral program: *{metrics['Referrals Completed']:,}* successful referrals")
+            insights.append(f"Referrals completed: {metrics['Referrals Completed']:,}")
         
         # Period-specific insights
         period = report["period"]
         if period == "weekly":
-            insights.append("Review weekly trends to optimize user engagement")
+            insights.append("Week-over-week comparison available in MixPanel")
         elif period == "biweekly":
-            insights.append("Bi-weekly checkpoint - great for sprint reviews!")
+            insights.append("Bi-weekly summary for sprint review")
         
         # Default insight if nothing else
         if not insights:
