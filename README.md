@@ -508,6 +508,3 @@ Customize the events tracked by editing `shared/report_generator.py`. Common met
 
 ---
 
-## License
-
-MIT License - feel free to use and modify for your own projects.
