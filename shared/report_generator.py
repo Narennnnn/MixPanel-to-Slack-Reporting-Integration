@@ -4,6 +4,7 @@ Report Generator - Generates analytics insights from MixPanel data
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 from .mixpanel_client import MixPanelClient, get_date_range
+import os
 
 
 class ReportGenerator:
@@ -40,9 +41,27 @@ class ReportGenerator:
         "Referrals Completed": "Referral Completed"
     }
     
+    # Period days for comparison
+    PERIOD_DAYS = {
+        "daily": 1,
+        "weekly": 7,
+        "biweekly": 14,
+        "monthly": 30
+    }
+    
     def __init__(self, mixpanel_client: Optional[MixPanelClient] = None):
         self.mixpanel = mixpanel_client or MixPanelClient()
         self._slack_client = None
+        self.project_id = os.environ.get("MIXPANEL_PROJECT_ID", "")
+        region = os.environ.get("MIXPANEL_REGION", "eu").lower()
+        
+        # MixPanel dashboard base URL
+        if region == "eu":
+            self.mixpanel_base_url = "https://eu.mixpanel.com"
+        elif region == "in":
+            self.mixpanel_base_url = "https://in.mixpanel.com"
+        else:
+            self.mixpanel_base_url = "https://mixpanel.com"
     
     @property
     def slack_client(self):
@@ -74,20 +93,55 @@ class ReportGenerator:
             period=report.get("period", "daily"),
             metrics=report.get("metrics", {}),
             top_events=report.get("top_events", []),
-            insights=report.get("insights", [])
+            insights=report.get("insights", []),
+            comparisons=report.get("comparisons", {}),
+            mixpanel_url=report.get("mixpanel_url", "")
         )
+    
+    def _get_previous_period_dates(self, period: str) -> tuple:
+        """Get date range for previous period (for comparison)"""
+        days = self.PERIOD_DAYS.get(period, 7)
+        today = datetime.now()
+        
+        # Previous period ends where current period starts
+        prev_to = today - timedelta(days=days)
+        prev_from = prev_to - timedelta(days=days)
+        
+        return prev_from.strftime("%Y-%m-%d"), prev_to.strftime("%Y-%m-%d")
+    
+    def _calculate_change(self, current: int, previous: int) -> Dict[str, Any]:
+        """Calculate percentage change between periods"""
+        if previous == 0:
+            if current > 0:
+                return {"percent": 100, "direction": "up", "is_new": True}
+            return {"percent": 0, "direction": "flat", "is_new": False}
+        
+        change = ((current - previous) / previous) * 100
+        direction = "up" if change > 0 else "down" if change < 0 else "flat"
+        
+        return {
+            "percent": abs(round(change, 1)),
+            "direction": direction,
+            "previous": previous,
+            "is_new": False
+        }
+    
+    def _get_mixpanel_insights_url(self, from_date: str, to_date: str) -> str:
+        """Generate a URL to MixPanel dashboard"""
+        return self.mixpanel_base_url
     
     def generate_report(self, period: str = "daily") -> Dict[str, Any]:
         """
-        Generate a complete analytics report
+        Generate a complete analytics report with period-over-period comparisons
         
         Args:
             period: daily, weekly, biweekly, monthly
         
         Returns:
-            Dictionary containing metrics, top_events, and insights
+            Dictionary containing metrics, top_events, insights, and comparisons
         """
         from_date, to_date = get_date_range(period)
+        prev_from, prev_to = self._get_previous_period_dates(period)
         
         report = {
             "period": period,
@@ -96,22 +150,40 @@ class ReportGenerator:
             "generated_at": datetime.now().isoformat(),
             "metrics": {},
             "top_events": [],
-            "insights": []
+            "insights": [],
+            "comparisons": {},
+            "mixpanel_url": self._get_mixpanel_insights_url(from_date, to_date)
         }
         
         try:
             # Get top events
             report["top_events"] = self._get_top_events(from_date, to_date)
             
-            # Calculate key metrics
+            # Calculate key metrics for current period
             report["metrics"] = self._calculate_metrics(from_date, to_date, period)
             
-            # Generate insights
+            # Calculate metrics for previous period and compute changes
+            previous_metrics = self._calculate_metrics(prev_from, prev_to, period)
+            report["comparisons"] = self._compute_comparisons(report["metrics"], previous_metrics)
+            
+            # Generate insights with comparison data
             report["insights"] = self._generate_insights(report)
             
         except Exception as e:
             report["error"] = str(e)
-            report["insights"].append(f"⚠️ Some data could not be retrieved: {str(e)}")
+            report["insights"].append(f"Some data could not be retrieved: {str(e)}")
+        
+        return report
+    
+    def _compute_comparisons(self, current: Dict, previous: Dict) -> Dict[str, Dict]:
+        """Compute period-over-period comparisons for all metrics"""
+        comparisons = {}
+        
+        for metric_name, current_value in current.items():
+            previous_value = previous.get(metric_name, 0)
+            comparisons[metric_name] = self._calculate_change(current_value, previous_value)
+        
+        return comparisons
         
         return report
     
@@ -175,48 +247,75 @@ class ReportGenerator:
         return metrics
     
     def _generate_insights(self, report: Dict[str, Any]) -> List[str]:
-        """Generate human-readable insights from the report data"""
+        """Generate human-readable insights with period-over-period comparisons"""
         insights = []
+        metrics = report.get("metrics", {})
+        comparisons = report.get("comparisons", {})
+        period = report.get("period", "daily")
         
-        # Top event insight
-        if report["top_events"]:
-            top_event = report["top_events"][0]
-            insights.append(
-                f"Top action: {top_event['event']} ({top_event['count']:,} occurrences)"
-            )
+        period_label = {
+            "daily": "day",
+            "weekly": "week",
+            "biweekly": "two weeks",
+            "monthly": "month"
+        }.get(period, "period")
         
-        # User activity insight
-        metrics = report["metrics"]
+        # Key metric insights with comparisons
+        key_insights = [
+            ("New Signups", "New signups"),
+            ("Users Onboarded", "Users onboarded"),
+            ("Receipts Uploaded", "Receipts uploaded"),
+            ("Vouchers Redeemed", "Vouchers redeemed"),
+        ]
+        
+        for metric_key, label in key_insights:
+            if metric_key in metrics:
+                value = metrics[metric_key]
+                comparison = comparisons.get(metric_key, {})
+                insight = self._format_metric_insight(label, value, comparison, period_label)
+                insights.append(insight)
+        
+        # Active users insight
         for key in ["Daily Active Users", "Weekly Active Users", "Monthly Active Users", "Bi-Weekly Active Users"]:
             if key in metrics:
-                insights.append(f"{key}: {metrics[key]:,}")
+                value = metrics[key]
+                comparison = comparisons.get(key, {})
+                insight = self._format_metric_insight(key, value, comparison, period_label)
+                insights.append(insight)
                 break
         
-        # Reewild specific insights
-        if "New Signups" in metrics:
-            insights.append(f"New signups: {metrics['New Signups']:,}")
-        
-        if "Receipts Uploaded" in metrics:
-            insights.append(f"Receipts uploaded: {metrics['Receipts Uploaded']:,}")
-        
-        if "Vouchers Redeemed" in metrics:
-            insights.append(f"Vouchers redeemed: {metrics['Vouchers Redeemed']:,}")
-        
-        if "Referrals Completed" in metrics:
-            insights.append(f"Referrals completed: {metrics['Referrals Completed']:,}")
-        
-        # Period-specific insights
-        period = report["period"]
-        if period == "weekly":
-            insights.append("Week-over-week comparison available in MixPanel")
-        elif period == "biweekly":
-            insights.append("Bi-weekly summary for sprint review")
+        # Top event insight
+        if report.get("top_events"):
+            top_event = report["top_events"][0]
+            insights.append(
+                f"Most popular action: {top_event['event']} with {top_event['count']:,} occurrences"
+            )
         
         # Default insight if nothing else
         if not insights:
             insights.append("Analytics data collected successfully")
         
         return insights
+    
+    def _format_metric_insight(self, label: str, value: int, comparison: Dict, period_label: str) -> str:
+        """Format a metric with its comparison data"""
+        if not comparison:
+            return f"{label}: {value:,}"
+        
+        direction = comparison.get("direction", "flat")
+        percent = comparison.get("percent", 0)
+        previous = comparison.get("previous", 0)
+        is_new = comparison.get("is_new", False)
+        
+        if is_new:
+            return f"{label}: {value:,} (new this {period_label})"
+        
+        if direction == "up":
+            return f"{label}: {value:,} (↑ {percent}% from {previous:,})"
+        elif direction == "down":
+            return f"{label}: {value:,} (↓ {percent}% from {previous:,})"
+        else:
+            return f"{label}: {value:,} (→ unchanged)"
     
     def generate_custom_report(
         self,
